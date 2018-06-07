@@ -1,3 +1,5 @@
 font: [Courier, 10]
 history: []
 path: ./Projects/
+title: ''
+total: [scenes, pages, ert, art, pm, setups]

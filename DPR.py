@@ -3,6 +3,7 @@
 # Date Created: 12/09/2017
 # Description: Daily Progress Report.
 
+import collections
 import os.path
 import tkinter as tk
 from tkinter import filedialog
@@ -28,6 +29,8 @@ class ConfigParser:
 font: [Courier, 10]
 history: []
 path: ./Projects/
+title: ""
+total: 
 """
         self.settings = self.__loadSettings()
         self.psettings = self.settings
@@ -47,13 +50,13 @@ path: ./Projects/
                 return yaml.load(self.defaults)
         elif project is True:
             self.psettings = self.__loadSettings()
+            self.psettings['name'] = title
             self.psettings['path'] = path+title+'/'
             stream = open(self.psettings['path']+title+'.dpro', 'w')
             yaml.dump(self.psettings, stream)
             stream.close()
 
     def setup(self, path=None, title=None):
-        print(path)
         self.__loadSettings(project=True, path=path, title=title)
 
 
@@ -62,6 +65,32 @@ class DataParser(Calculate):
     def __init__(self):
         super().__init__()
         self.data = []
+        self.saveTemplate = self.__setupSaveTemplate()
+
+    def __setupSaveTemplate(self):
+        """
+        Create template of OrderedDict of OrderedDicts to be used by the Calculate class.
+        :return: OrderedDict(OrderedDict())
+        """
+        hlist = ['scenes', 'pages', 'ert', 'art', 'pm', 'setups']
+        slist = ['scenes', 'pages', 'ert']
+        dlist = ['previous', 'todate', 'script', 'tobe', 'projected']
+        headers = collections.OrderedDict()
+        for key in hlist:
+            headers[key] = 0
+        subHeaders = collections.OrderedDict()
+        for key in slist:
+            subHeaders[key] = 0
+        template = collections.OrderedDict()
+        count = 0
+        for key in dlist:
+            if count < 2:
+                template[key] = headers
+                count += 1
+            else:
+                template[key] = subHeaders
+
+        return template
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -115,25 +144,26 @@ class DataParser(Calculate):
 
         return data
 
-    def load(self, gui, spath, settings=None, project=False):
+    def load(self, root, gui, settings=None, project=False):
         if project is False:
-            filename = filedialog.askopenfilename(initialdir=spath+'/Reports',
+            filename = filedialog.askopenfilename(initialdir=settings.psettings['path']+'/Reports',
                                                   title="Open Report")
             if filename is not '':
                 lfile = open(filename, 'rb')
                 self.data = pickle.load(lfile)
                 lfile.close()
-                print(len(self.data))
                 self.dataMap(gui, new=True)
                 self.dataMap(gui, self.data)
+                root.title(settings.psettings['title'] + '.dpro' + ' - ' + os.path.split(filename)[1])
         elif project is True:
 
-            filename = filedialog.askopenfilename(initialdir=spath,
+            filename = filedialog.askopenfilename(initialdir=settings.settings['path'],
                                                   title="Open Project")
             if filename is not '':
                 stream = open(filename, 'r')
                 settings.psettings = yaml.load(stream)
                 self.dataMap(gui, new=True)
+                root.title(os.path.split(filename)[1])
 
     def export(self, file=None):
         if file and os.path.exists(file):
@@ -142,7 +172,7 @@ class DataParser(Calculate):
             #TODO: Display Message window
             pass
 
-    def save(self, spath=None, datamap=None, settings=None):
+    def save(self, root, spath=None, datamap=None, settings=None):
         path = spath+'/Reports'
         if not os.path.exists(path):
             os.makedirs(path)
@@ -157,8 +187,9 @@ class DataParser(Calculate):
         sfile = open(filename, 'wb')
         pickle.dump(datamap, sfile)
         sfile.close()
+        root.title(datamap[0]+'.dpro'+' - '+settings['history'][-1])
 
-    def newProject(self, gui, settings, data):
+    def newProject(self, root, gui, settings, data):
         title = simpledialog.askstring("New Project", "Project name", parent=gui)
         # Create project directories
         path = settings.settings['path']
@@ -167,6 +198,7 @@ class DataParser(Calculate):
         # Create project file
         settings.setup(path=path, title=title)
         data.dataMap(gui, new=True)
+        root.title(title+'.dpro')
 
 
 # GUI Class
@@ -196,23 +228,26 @@ class Gui:
         # Create Menu
         menuBar = tk.Menu(root)
         fileMenu = tk.Menu(menuBar, tearoff=0)
-        fileMenu.add_command(label="New Project", command=lambda: self.data.newProject(frame.interior,
+        fileMenu.add_command(label="New Project", command=lambda: self.data.newProject(self.master,
+                                                                                       frame.interior,
                                                                                        self.config,
                                                                                        self.data))
-        fileMenu.add_command(label="Open Project", command=lambda: self.data.load(frame.interior,
-                                                                                  self.config.settings['path'],
+        fileMenu.add_command(label="Open Project", command=lambda: self.data.load(self.master, frame.interior,
                                                                                   settings=self.config,
                                                                                   project=True))
         fileMenu.add_command(label="Close Project", command=None)
         fileMenu.add_separator()
         fileMenu.add_command(label="New", command=lambda: self.data.dataMap(frame.interior, new=True))
-        fileMenu.add_command(label="Open", command=lambda: self.data.load(frame.interior, self.config.psettings['path']))
+        fileMenu.add_command(label="Open", command=lambda: self.data.load(self.master,
+                                                                          frame.interior,
+                                                                          self.config))
         fileMenu.add_command(label="Close", command=lambda: self.data.dataMap(frame.interior, new=True))
         fileMenu.add_separator()
         fileMenu.add_command(label="Print", command=None)
         fileMenu.add_separator()
         fileMenu.add_command(label="Save", command=None)
-        fileMenu.add_command(label="Save As", command=lambda: self.data.save(self.config.psettings['path'],
+        fileMenu.add_command(label="Save As", command=lambda: self.data.save(self.master,
+                                                                             self.config.psettings['path'],
                                                                              self.data.dataMap(frame.interior),
                                                                              self.config.psettings))
         fileMenu.add_separator()
@@ -427,7 +462,7 @@ class Gui:
         entRemarks = tk.Text(frame6, height=5, wrap=tk.WORD, bd=0, highlightthickness=0)
         entRemarks.pack()
 
-        self.bringtoFront(root=root)
+        #self.bringtoFront(root=root)
 
 
 # GUI window scroll implementation
@@ -489,6 +524,7 @@ if __name__ == '__main__':
 
 
     master = tk.Tk()
+    master.title('Untitled')
     dpr = Dpr(master)
     master.mainloop()
 
