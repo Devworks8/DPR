@@ -52,24 +52,9 @@ path: ./Projects/
             yaml.dump(self.psettings, stream)
             stream.close()
 
-    def __get(self, key=None):
-        if key is None:
-            return self.settings
-        else:
-            return self.settings[key]
-
-    def __put(self, key, value):
-        self.settings[key] = value
-
     def setup(self, path=None, title=None):
         print(path)
         self.__loadSettings(project=True, path=path, title=title)
-
-    def modify(self, key, value):
-        self.__put(key, value)
-
-    def fetch(self, key=None):
-        return self.__get(key)
 
 
 # Data manipulation
