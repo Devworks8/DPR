@@ -12,6 +12,8 @@ import openpyxl as opxl
 import pickle
 import sympy as spy
 
+UPDATE_RATE = 1000
+
 
 class Calculate:
     def __init__(self):
@@ -184,21 +186,26 @@ class DataParser(Calculate):
 
 # GUI Class
 class Gui:
-    def __init__(self):
+    def __init__(self, master):
         self.config = ConfigParser()
         self.data = DataParser()
-        self.widgets = []
+        self.create(master)
+        self.master = master
+        self.updater()
+
+    def updater(self):
+        # insert methods here
+        self.master.after(UPDATE_RATE, self.updater)
 
     def bringtoFront(self, root):
         root.attributes("-topmost", True)
         root.focus_force()
 
-    def create(self):
+    def create(self, root):
         """
         Declare and position all widgets.
         :return: None
         """
-        root = tk.Tk()
         frame = VerticalScrolledFrame(root)
         frame.pack()
         # Create Menu
@@ -435,13 +442,7 @@ class Gui:
         entRemarks = tk.Text(frame6, height=5, wrap=tk.WORD, bd=0, highlightthickness=0)
         entRemarks.pack()
 
-        while True:
-            try:
-                self.bringtoFront(root=root)
-                root.mainloop()
-                break
-            except UnicodeDecodeError:
-                pass
+        self.bringtoFront(root=root)
 
 
 # GUI window scroll implementation
@@ -497,20 +498,12 @@ class VerticalScrolledFrame(tk.Frame):
 
 if __name__ == '__main__':
     # Parent Class
-    class Dpr(Gui):
-        def __init__(self):
-            super().__init__()
-
-            self.gui = Gui()
-
-        def run(self):
-            """
-            Create GUI
-            :return: None
-            """
-            self.gui.create()
+    class Dpr:
+        def __init__(self, master):
+            self.gui = Gui(master)
 
 
-    dpr = Dpr()
-    dpr.run()
+    master = tk.Tk()
+    dpr = Dpr(master)
+    master.mainloop()
 
