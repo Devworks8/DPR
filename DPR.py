@@ -20,6 +20,46 @@ class Calculate:
     def __init__(self):
         pass
 
+    def convert(self, gui, data, config):
+        """
+        Convert any string representation of a rational to a mix rational with the denominator maintained in 8th
+        :param gui:
+        :param data:
+        :param config:
+        :return: String of mix rational
+        """
+        value = ''
+        rational = spy.Rational(data)
+        if rational.q is not 8:
+            if rational.q > 8:
+                f = int(rational.q / 8)
+                rational.p = rational.p / f
+                rational.q = rational.q / f
+                if rational.p > 8:
+                    value.format("%d %d", rational.p / 8, rational.p % 8)
+            else:
+                f = int(8 / rational.q)
+                rational.p = rational.p * f
+                rational.q = rational.q * f
+                value = rational
+                if rational.p > 8:
+                    value.format("%d %d", rational.p / 8, rational.p % 8)
+        else:
+            if int(rational.p) > 8:
+
+                value = '%d %d/%d' % (rational.p // rational.q, rational.p % rational.q, rational.q)
+            else:
+                value = rational
+
+        return value
+
+    def add(self, data):
+        # sample code for the addition of rational numbers.
+        # pass to the convert method to convert to mixed rational
+        # TODO: create addition method
+        xs = spy.sympify("41/8 + 1/8", rational=True)
+        ys = spy.sympify("1/8 + 1/8", rational=True)
+
 
 # Settings handler
 class ConfigParser:
