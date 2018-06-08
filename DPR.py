@@ -20,7 +20,7 @@ class Calculate:
     def __init__(self):
         pass
 
-    def convert(self, gui, data, config):
+    def convert(self, gui, data, config, reverse=False):
         """
         Convert any string representation of a rational to a mix rational with the denominator maintained in 8th
         :param gui:
@@ -29,27 +29,31 @@ class Calculate:
         :return: String of mix rational
         """
         value = ''
-        rational = spy.Rational(data)
-        if rational.q is not 8:
-            if rational.q > 8:
-                f = int(rational.q / 8)
-                rational.p = rational.p / f
-                rational.q = rational.q / f
-                if rational.p > 8:
-                    value.format("%d %d", rational.p / 8, rational.p % 8)
+        if reverse is False:
+            rational = spy.Rational(data)
+            if rational.q is not 8:
+                if rational.q > 8:
+                    f = int(rational.q / 8)
+                    rational.p = rational.p / f
+                    rational.q = rational.q / f
+                    if rational.p > 8:
+                        value.format("%d %d", rational.p / 8, rational.p % 8)
+                else:
+                    f = int(8 / rational.q)
+                    rational.p = rational.p * f
+                    rational.q = rational.q * f
+                    value = rational
+                    if rational.p > 8:
+                        value.format("%d %d", rational.p / 8, rational.p % 8)
             else:
-                f = int(8 / rational.q)
-                rational.p = rational.p * f
-                rational.q = rational.q * f
-                value = rational
-                if rational.p > 8:
-                    value.format("%d %d", rational.p / 8, rational.p % 8)
-        else:
-            if int(rational.p) > 8:
+                if int(rational.p) > 8:
 
-                value = '%d %d/%d' % (rational.p // rational.q, rational.p % rational.q, rational.q)
-            else:
-                value = rational
+                    value = '%d %d/%d' % (rational.p // rational.q, rational.p % rational.q, rational.q)
+                else:
+                    value = rational
+        else:
+            breakdown = data.split(' ')
+            value = breakdown[0]*8+'/'+breakdown[1]
 
         return value
 
@@ -57,8 +61,15 @@ class Calculate:
         # sample code for the addition of rational numbers.
         # pass to the convert method to convert to mixed rational
         # TODO: create addition method
-        xs = spy.sympify("41/8 + 1/8", rational=True)
-        ys = spy.sympify("1/8 + 1/8", rational=True)
+        # This works
+        # need to convert mix rational to rational i.e '5 1/8' -> '41/8'
+        # '5 1/8'[-3:] == '1/8' or '5 1/8'.split(' ') -> ['5', '1/8']
+        x = spy.symbols('x')
+        y = spy.symbols('y')
+        exp = x + y
+        x = spy.sympify("41/8 + 1/8", rational=True)
+        y = spy.sympify("1/8 + 1/8", rational=True)
+        exp = x + y
 
 
 # Settings handler
@@ -69,8 +80,7 @@ class ConfigParser:
 font: [Courier, 10]
 history: []
 path: ./Projects/
-title: ""
-total: 
+title: "" 
 """
         self.settings = self.__loadSettings()
         self.psettings = self.settings
@@ -131,6 +141,9 @@ class DataParser(Calculate):
                 template[key] = subHeaders
 
         return template
+
+    def update(self, fields, calcdata,  data):
+        pass
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -246,13 +259,19 @@ class Gui:
     def __init__(self, master):
         self.config = ConfigParser()
         self.data = DataParser()
+        self.fields = [[]]
+        self.calcData = []
+        self.gui = None
         self.create(master)
         self.master = master
         self.updater()
 
     def updater(self):
-        # insert methods here
+        self.__calculate(self.fields, self.calcData, self.data)
         self.master.after(UPDATE_RATE, self.updater)
+
+    def __calculate(self, fields, calcdata, data):
+        data.update(self.fields, self.calcData, self.data)
 
     def bringtoFront(self, root):
         root.attributes("-topmost", True)
@@ -265,7 +284,9 @@ class Gui:
         """
         frame = VerticalScrolledFrame(root)
         frame.pack()
-        # Create Menu
+        """
+        Create Menu
+        """
         menuBar = tk.Menu(root)
         fileMenu = tk.Menu(menuBar, tearoff=0)
         fileMenu.add_command(label="New Project", command=lambda: self.data.newProject(self.master,
@@ -305,26 +326,38 @@ class Gui:
 
         root.config(menu=menuBar)
 
-        # Create Status Bar
+        """
+        Create Status Bar
+        """
         statusBar = tk.Label(root, text="Ready", bd=3, relief=tk.RIDGE)
         statusBar.pack(side=tk.BOTTOM, fill=tk.X, expand=tk.TRUE)
 
-        # First Section: Contains Header and Production Title.
+        """
+        First Section: Contains Header and Production Title.
+        """
         frame1 = tk.Frame(frame.interior, padx=10, pady=10)
         frame1.pack()
-        # Header
+        """
+        Header
+        """
         header = tk.Label(frame1, text="Script Supervisor Report")
         header.grid(row=0, columnspan=4)
-        # Production Title
+        """
+        Production Title
+        """
         lblTitle = tk.Label(frame1, text="Title: ")
         entTitle = tk.Entry(frame1, width=49)
         lblTitle.grid(row=2, sticky=tk.E)
         entTitle.grid(row=2, column=1)
 
-        # Second Section: Call Time, Meal Breaks, etc...
+        """
+        Second Section: Call Time, Meal Breaks, etc...
+        """
         frame2 = tk.Frame(frame.interior)
         frame2.pack()
-        # Declare widgets
+        """
+        Declare widgets
+        """
         lblDate = tk.Label(frame2, text="Date: ")
         entDate = tk.Entry(frame2)
         lblShoot = tk.Label(frame2, text="Shoot Day: ")
@@ -341,7 +374,9 @@ class Gui:
         entMeal2 = tk.Entry(frame2)
         lblWrap = tk.Label(frame2, text="Wrap: ")
         entWrap = tk.Entry(frame2)
-        # Place widgets on grid
+        """
+        Place widgets on grid
+        """
         lblDate.grid(row=0, sticky=tk.E)
         entDate.grid(row=0, column=1, columnspan=2)
         lblShoot.grid(row=1, sticky=tk.E)
@@ -359,17 +394,23 @@ class Gui:
         lblWrap.grid(row=3, column=3, sticky=tk.E)
         entWrap.grid(row=3, column=4, columnspan=2)
 
-        # Thirst Section: Entries for the day
+        """
+        Third Section: Entries for the day
+        """
         frame3 = tk.Frame(frame.interior)
         frame3.pack()
-        # Declare widgets
+        """
+        Declare widgets
+        """
         lblEntScenes = tk.Label(frame3, text="Scene")
         lblEntPages = tk.Label(frame3, text="Pages")
         lblEntErt = tk.Label(frame3, text="ERT")
         lblEntArt = tk.Label(frame3, text="ART")
         lblEntDelta = tk.Label(frame3, text="+/-")
         lblEntSetups = tk.Label(frame3, text="Setups")
-        # Place widgets on grid
+        """
+        Place widgets on grid
+        """
         lblEntScenes.grid(row=0, column=0)
         lblEntPages.grid(row=0, column=1)
         lblEntErt.grid(row=0, column=2)
@@ -382,11 +423,20 @@ class Gui:
             for j in range(width):  # Columns
                 b = tk.Entry(frame3, width=6)
                 b.grid(row=i + 1, column=j)
+                # Create a nested list of lists containing 6 objects each representing a row of data.
+                if len(self.fields[len(self.fields)-1]) % 6 == 0 or len(self.fields) == 1:
+                    self.fields[len(self.fields)-1].append(b)
+                else:
+                    self.fields[len(self.fields)-1].append(b)
 
-        # Fourth Section:
+        """
+        Fourth Section:
+        """
         frame4 = tk.Frame(frame.interior)
         frame4.pack()
-        # Declare widgets
+        """
+        Declare widgets
+        """
         subframe1 = tk.LabelFrame(frame4, text="Scenes Scheduled")
         subframe1.pack()
         txtScheduled = tk.Text(subframe1, height=2, bd=0, highlightthickness=0)
@@ -416,10 +466,14 @@ class Gui:
         txtSlates = tk.Text(subframe8, height=2, bd=0, highlightthickness=0)
         txtSlates.pack()
 
-        # Fifth Section:
+        """
+        Fifth Section:
+        """
         frame5 = tk.Frame(frame.interior)
         frame5.pack()
-        # Define Widgets
+        """
+        Define Widgets
+        """
         lblScenes = tk.Label(frame5, text="Scenes")
         lblPages = tk.Label(frame5, text="Pages")
         lblErt = tk.Label(frame5, text="ERT")
@@ -433,6 +487,8 @@ class Gui:
         entTodayArt = tk.Entry(frame5, width=6)
         entTodayDelta = tk.Entry(frame5, width=6)
         entTodaySetups = tk.Entry(frame5, width=6)
+        self.calcData.append([entTodayScenes, entTodayPages, entTodayErt, entTodayArt, entTodayDelta, entTodaySetups])
+
         lblPrev = tk.Label(frame5, text="Shot Previous")
         entPrevScenes = tk.Entry(frame5, width=6)
         entPrevPages = tk.Entry(frame5, width=6)
@@ -440,6 +496,8 @@ class Gui:
         entPrevArt = tk.Entry(frame5, width=6)
         entPrevDelta = tk.Entry(frame5, width=6)
         entPrevSetups = tk.Entry(frame5, width=6)
+        self.calcData.append([entPrevScenes, entPrevPages, entPrevErt, entPrevArt, entPrevDelta, entPrevSetups])
+
         lblTotal = tk.Label(frame5, text="Total to Date")
         entTotalScenes = tk.Entry(frame5, width=6)
         entTotalPages = tk.Entry(frame5, width=6)
@@ -447,17 +505,25 @@ class Gui:
         entTotalArt = tk.Entry(frame5, width=6)
         entTotalDelta = tk.Entry(frame5, width=6)
         entTotalSetups = tk.Entry(frame5, width=6)
+        self.calcData.append([entTotalScenes, entTotalPages, entTotalErt, entTotalArt, entTotalDelta, entTotalSetups])
+
         lblScriptTtl = tk.Label(frame5, text="Script Total")
         entScriptTtlScenes = tk.Entry(frame5, width=6)
         entScriptTtlPages = tk.Entry(frame5, width=6)
         entScriptTtlErt = tk.Entry(frame5, width=6)
+        self.calcData.append([entScriptTtlScenes, entScriptTtlPages, entScriptTtlErt])
+
         lblToBe = tk.Label(frame5, text="To be Shot")
         entToBeScenes = tk.Entry(frame5, width=6)
         entToBePages = tk.Entry(frame5, width=6)
         entToBeErt = tk.Entry(frame5, width=6)
+        self.calcData.append([entToBeScenes, entToBePages, entToBeErt])
+
         lblTtlRun = tk.Label(frame5, text="Projected Total Running Time: ")
         entTtlRun = tk.Entry(frame5, width=6)
-        # Place widgets on grid
+        """
+        Place widgets on grid
+        """
         lblScenes.grid(row=0, column=1)
         lblPages.grid(row=0, column=2)
         lblErt.grid(row=0, column=3)
@@ -496,11 +562,14 @@ class Gui:
         lblTtlRun.grid(row=6, column=0, columnspan=3, sticky=tk.E)
         entTtlRun.grid(row=6, column=3)
 
-        # Sixth Section: Contains Remarks Field
+        """
+        Sixth Section: Contains Remarks Field
+        """
         frame6 = tk.LabelFrame(frame.interior, text="Remarks", padx=10, pady=5)
         frame6.pack()
         entRemarks = tk.Text(frame6, height=5, wrap=tk.WORD, bd=0, highlightthickness=0)
         entRemarks.pack()
+        self.gui = frame.interior
 
         #self.bringtoFront(root=root)
 
@@ -553,7 +622,7 @@ class VerticalScrolledFrame(tk.Frame):
         def _on_mousewheel(event):
             canvas.yview_scroll(-1 * event.delta, 'units')
 
-        canvas.bind_all('<MouseWheel>', _on_mousewheel)
+        #canvas.bind_all('<MouseWheel>', _on_mousewheel)
 
 
 if __name__ == '__main__':
