@@ -61,6 +61,31 @@ class Calculate:
 
         return value
 
+    def formatData(self, data, template):
+        fmtData = [[]]
+        if len(data) == 0:
+            return
+        fmtData[0].append(data[0])
+
+        fmtData.append([])
+        for index in range(1, 8):
+            fmtData[len(fmtData)-1].append(data[index])
+
+        fmtData.append([])
+        for index in range(9, 129):
+            fmtData[len(fmtData)-1].append(data[index])
+
+        fmtData.append([])
+        for index in range(130, 136):
+            fmtData[len(fmtData)-1].append(data[index])
+
+        fmtData.append(template)
+
+        fmtData.append([])
+        fmtData[len(fmtData)-1].append(data[161])
+
+        return fmtData
+
     def process(self, data):
         # pass to the convert method to convert to mixed rational, and vice versa
         x = spy.symbols('x')
@@ -142,7 +167,24 @@ class DataParser(Calculate):
         return template
 
     def update(self, fields, calcdata,  data):
-        print(fields[0][0].get())
+        #print(fields[0][0].get())
+        fmtData = self.formatData(self.data, self.saveTemplate)
+        """
+                fmtData index key: 0 = title
+                                   1 = 
+                                   2 = daily entries
+                                   3 = 
+                                   4 = OrderedDict
+                                   5 = comments
+        """
+
+        if fmtData is not None and len(fmtData) > 1:
+            if len(fmtData[0][0]) > 0:
+                print("There's a title")
+                print(fmtData)
+                print(fmtData[4]['previous']['scenes'])
+            else:
+                print("No title")
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -193,7 +235,6 @@ class DataParser(Calculate):
                                 index += 1
                             else:
                                 w.delete("1.0", tk.END)
-
         return data
 
     def load(self, root, gui, settings=None, project=False):
