@@ -20,50 +20,49 @@ class Calculate:
     def __init__(self):
         pass
 
-    def convert(self, gui, data, config, reverse=False):
+    def convert(self, data=None, reverse=False):
         """
         Convert any string representation of a rational to a mix rational with the denominator maintained in 8th
-        :param gui:
         :param data:
-        :param config:
+        :param reverse:
         :return: String of mix rational
         """
         value = ''
-        if reverse is False:
-            rational = spy.Rational(data)
-            if rational.q is not 8:
-                if rational.q > 8:
-                    f = int(rational.q / 8)
-                    rational.p = rational.p / f
-                    rational.q = rational.q / f
-                    if rational.p > 8:
-                        value.format("%d %d", rational.p / 8, rational.p % 8)
+        if len(data) > 0:
+            if reverse is False:
+                rational = spy.Rational(data)
+                if rational.q is not 8:
+                    if rational.q > 8:
+                        f = int(rational.q / 8)
+                        rational.p = rational.p / f
+                        rational.q = rational.q / f
+                        if rational.p > 8:
+                            value.format("%d %d", rational.p / 8, rational.p % 8)
+                    else:
+                        f = int(8 / rational.q)
+                        rational.p = rational.p * f
+                        rational.q = rational.q * f
+                        value = rational
+                        if rational.p > 8:
+                            value.format("%d %d", rational.p / 8, rational.p % 8)
                 else:
-                    f = int(8 / rational.q)
-                    rational.p = rational.p * f
-                    rational.q = rational.q * f
-                    value = rational
-                    if rational.p > 8:
-                        value.format("%d %d", rational.p / 8, rational.p % 8)
-            else:
-                if int(rational.p) > 8:
+                    if int(rational.p) > 8:
 
-                    value = '%d %d/%d' % (rational.p // rational.q, rational.p % rational.q, rational.q)
-                else:
-                    value = rational
+                        value = '%d %d/%d' % (rational.p // rational.q, rational.p % rational.q, rational.q)
+                    else:
+                        value = rational
+            else:
+                breakdown = data.split(' ')
+                x = str(int(breakdown[0])*8)+'/8'
+                y = breakdown[1]
+                value = spy.sympify(breakdown[0]+'+'+breakdown[1])
         else:
-            breakdown = data.split(' ')
-            value = breakdown[0]*8+'/'+breakdown[1]
+            pass
 
         return value
 
-    def add(self, data):
-        # sample code for the addition of rational numbers.
-        # pass to the convert method to convert to mixed rational
-        # TODO: create addition method
-        # This works
-        # need to convert mix rational to rational i.e '5 1/8' -> '41/8'
-        # '5 1/8'[-3:] == '1/8' or '5 1/8'.split(' ') -> ['5', '1/8']
+    def process(self, data):
+        # pass to the convert method to convert to mixed rational, and vice versa
         x = spy.symbols('x')
         y = spy.symbols('y')
         exp = x + y
@@ -143,7 +142,7 @@ class DataParser(Calculate):
         return template
 
     def update(self, fields, calcdata,  data):
-        print(fields)
+        print(fields[0][0].get())
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -424,7 +423,7 @@ class Gui:
                 b = tk.Entry(frame3, width=6)
                 b.grid(row=i + 1, column=j)
                 # Create a nested list of lists containing 6 objects each representing a row of data.
-                if len(self.fields)  == 0:
+                if len(self.fields) == 0:
                     self.fields.append([b])
                 elif len(self.fields) > 0:
                     if len(self.fields[len(self.fields) - 1]) % 6 == 0:
