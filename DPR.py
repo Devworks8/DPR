@@ -143,7 +143,7 @@ class DataParser(Calculate):
         return template
 
     def update(self, fields, calcdata,  data):
-        pass
+        print(fields)
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -259,7 +259,7 @@ class Gui:
     def __init__(self, master):
         self.config = ConfigParser()
         self.data = DataParser()
-        self.fields = [[]]
+        self.fields = []
         self.calcData = []
         self.gui = None
         self.create(master)
@@ -271,7 +271,7 @@ class Gui:
         self.master.after(UPDATE_RATE, self.updater)
 
     def __calculate(self, fields, calcdata, data):
-        data.update(self.fields, self.calcData, self.data)
+        data.update(fields, calcdata, data)
 
     def bringtoFront(self, root):
         root.attributes("-topmost", True)
@@ -424,10 +424,13 @@ class Gui:
                 b = tk.Entry(frame3, width=6)
                 b.grid(row=i + 1, column=j)
                 # Create a nested list of lists containing 6 objects each representing a row of data.
-                if len(self.fields[len(self.fields)-1]) % 6 == 0 or len(self.fields) == 1:
-                    self.fields[len(self.fields)-1].append(b)
-                else:
-                    self.fields[len(self.fields)-1].append(b)
+                if len(self.fields)  == 0:
+                    self.fields.append([b])
+                elif len(self.fields) > 0:
+                    if len(self.fields[len(self.fields) - 1]) % 6 == 0:
+                        self.fields.append([b])
+                    else:
+                        self.fields[len(self.fields)-1].append(b)
 
         """
         Fourth Section:
