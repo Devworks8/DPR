@@ -4,6 +4,7 @@
 # Description: Daily Progress Report.
 
 import collections
+import datetime
 import os.path
 import tkinter as tk
 from tkinter import filedialog
@@ -63,6 +64,7 @@ class Calculate:
 
     def formatData(self, data, template):
         fmtData = [[]]
+
         if len(data) == 0:
             return
         fmtData[0].append(data[0])
@@ -71,12 +73,11 @@ class Calculate:
         for index in range(1, 8):
             fmtData[len(fmtData)-1].append(data[index])
 
-        #fmtData.append([])
         for index in range(9, 129):
-            #fmtData[len(fmtData)-1].append(data[index])
-
             if len(fmtData[len(fmtData) - 1]) % 7 == 0:
                 fmtData.append([data[index]])
+
+
             if len(fmtData[len(fmtData) - 1]) % 6 == 0:
                 fmtData.append([data[index]])
             else:
@@ -147,6 +148,7 @@ class DataParser(Calculate):
         super().__init__()
         self.data = []
         self.saveTemplate = self.__setupSaveTemplate()
+        self.fmtData = None
 
     def __setupSaveTemplate(self):
         """
@@ -173,9 +175,33 @@ class DataParser(Calculate):
 
         return template
 
+    def __timeDelta(self, fields, data):
+        for row in range(2, 21):
+            lstItems = []
+            for col in range(2, 5):
+                if col == 4:
+                    lstItems.append(self.fmtData[row][col])
+                    lstItems.append(fields[row - 2][col])
+                else:
+                    lstItems.append(self.fmtData[row][col])
+            # Do calculation Ert - Art -> Delta
+            print(lstItems)
+
+            ##############
+            # data is not getting update.
+            # TODO: MUST FIX
+            ##############
+
+            if len(lstItems[0]) > 0 and len(lstItems[1]) > 0:
+                t1 = datetime.datetime.strptime(lstItems[0], '%M:%S')
+                t2 = datetime.datetime.strptime(lstItems[1], '%M:%S')
+                delta = t1 - t2
+                lstItems[3].insert(0, str(delta.tm_min) + ':' + str(delta.tm_sec))
+                print(delta)
+
     def update(self, fields, calcdata,  data):
         #print(fields[0][0].get())
-        fmtData = self.formatData(self.data, self.saveTemplate)
+        self.fmtData = self.formatData(self.data, self.saveTemplate)
         """
                 fmtData index key: 0 = title
                                    1 = 
@@ -185,12 +211,11 @@ class DataParser(Calculate):
                                    5 = comments
         """
 
-        if fmtData is not None and len(fmtData) > 1:
-            if len(fmtData[0][0]) > 0:
-                print("There's a title")
-                print(fmtData)
-                print(fields)
-                print(calcdata)
+        if self.fmtData is not None and len(self.fmtData) > 1:
+            if len(self.fmtData[0][0]) > 0:
+                self.__timeDelta(fields, data)
+
+                #print(calcdata)
                 #print(fmtData[4]['previous']['scenes'])
             else:
                 print("No title")
