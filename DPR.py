@@ -71,9 +71,16 @@ class Calculate:
         for index in range(1, 8):
             fmtData[len(fmtData)-1].append(data[index])
 
-        fmtData.append([])
+        #fmtData.append([])
         for index in range(9, 129):
-            fmtData[len(fmtData)-1].append(data[index])
+            #fmtData[len(fmtData)-1].append(data[index])
+
+            if len(fmtData[len(fmtData) - 1]) % 7 == 0:
+                fmtData.append([data[index]])
+            if len(fmtData[len(fmtData) - 1]) % 6 == 0:
+                fmtData.append([data[index]])
+            else:
+                fmtData[len(fmtData) - 1].append(data[index])
 
         fmtData.append([])
         for index in range(130, 136):
@@ -182,7 +189,9 @@ class DataParser(Calculate):
             if len(fmtData[0][0]) > 0:
                 print("There's a title")
                 print(fmtData)
-                print(fmtData[4]['previous']['scenes'])
+                print(fields)
+                print(calcdata)
+                #print(fmtData[4]['previous']['scenes'])
             else:
                 print("No title")
 
