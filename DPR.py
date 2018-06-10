@@ -77,7 +77,6 @@ class Calculate:
             if len(fmtData[len(fmtData) - 1]) % 7 == 0:
                 fmtData.append([data[index]])
 
-
             if len(fmtData[len(fmtData) - 1]) % 6 == 0:
                 fmtData.append([data[index]])
             else:
@@ -178,30 +177,26 @@ class DataParser(Calculate):
     def __timeDelta(self, fields, data):
         for row in range(2, 21):
             lstItems = []
-            for col in range(2, 5):
+            for col in range(3, 5):
                 if col == 4:
                     lstItems.append(self.fmtData[row][col])
                     lstItems.append(fields[row - 2][col])
                 else:
                     lstItems.append(self.fmtData[row][col])
             # Do calculation Ert - Art -> Delta
-            print(lstItems)
+            if len(lstItems[0]) > 2 and len(lstItems[1]) > 2:
+                ert = datetime.datetime.strptime(lstItems[0], '%M:%S')
+                art = datetime.datetime.strptime(lstItems[1], '%M:%S')
+                diff = ert - art
+                delta = diff.total_seconds()
+                lstItems[2].delete(0, tk.END)
+                if diff < datetime.timedelta(0):
+                    lstItems[2].insert(0, '-{}:{}'.format(int(delta / 60), int(-delta % 60)))
+                else:
+                    lstItems[2].insert(0, '{}:{}'.format(int(delta / 60), int(delta % 60)))
 
-            ##############
-            # data is not getting update.
-            # TODO: MUST FIX
-            ##############
-
-            if len(lstItems[0]) > 0 and len(lstItems[1]) > 0:
-                t1 = datetime.datetime.strptime(lstItems[0], '%M:%S')
-                t2 = datetime.datetime.strptime(lstItems[1], '%M:%S')
-                delta = t1 - t2
-                lstItems[3].insert(0, str(delta.tm_min) + ':' + str(delta.tm_sec))
-                print(delta)
-
-    def update(self, fields, calcdata,  data):
-        #print(fields[0][0].get())
-        self.fmtData = self.formatData(self.data, self.saveTemplate)
+    def update(self, gui, fields, calcdata,  data):
+        self.fmtData = self.formatData(data.dataMap(gui), self.saveTemplate)
         """
                 fmtData index key: 0 = title
                                    1 = 
@@ -213,9 +208,8 @@ class DataParser(Calculate):
 
         if self.fmtData is not None and len(self.fmtData) > 1:
             if len(self.fmtData[0][0]) > 0:
-                self.__timeDelta(fields, data)
+                self.__timeDelta(fields, self.fmtData)
 
-                #print(calcdata)
                 #print(fmtData[4]['previous']['scenes'])
             else:
                 print("No title")
@@ -331,21 +325,21 @@ class DataParser(Calculate):
 # GUI Class
 class Gui:
     def __init__(self, master):
+        self.master = master
         self.config = ConfigParser()
         self.data = DataParser()
+        self.gui = None
         self.fields = []
         self.calcData = []
-        self.gui = None
         self.create(master)
-        self.master = master
         self.updater()
 
     def updater(self):
-        self.__calculate(self.fields, self.calcData, self.data)
+        self.__calculate(self.gui, self.fields, self.calcData, self.data)
         self.master.after(UPDATE_RATE, self.updater)
 
-    def __calculate(self, fields, calcdata, data):
-        data.update(fields, calcdata, data)
+    def __calculate(self, gui, fields, calcdata, data):
+        data.update(gui, fields, calcdata, data)
 
     def bringtoFront(self, root):
         root.attributes("-topmost", True)
@@ -358,6 +352,7 @@ class Gui:
         """
         frame = VerticalScrolledFrame(root)
         frame.pack()
+        self.gui = frame.interior
         """
         Create Menu
         """
