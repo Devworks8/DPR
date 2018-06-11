@@ -29,7 +29,7 @@ class Calculate:
         :return: String of mix rational
         """
         value = ''
-        if len(data) > 0:
+        if isinstance(data, spy.Rational) or len(data) > 0:
             if reverse is False:
                 rational = spy.Rational(data)
                 if rational.q is not 8:
@@ -39,6 +39,8 @@ class Calculate:
                         rational.q = rational.q / f
                         if rational.p > 8:
                             value.format("%d %d", rational.p / 8, rational.p % 8)
+                    elif rational.q == 1:
+                        value = rational
                     else:
                         f = int(8 / rational.q)
                         rational.p = rational.p * f
@@ -53,14 +55,16 @@ class Calculate:
                     else:
                         value = rational
             else:
-                breakdown = data.split(' ')
-                x = str(int(breakdown[0])*8)+'/8'
-                y = breakdown[1]
-                value = spy.sympify(breakdown[0]+'+'+breakdown[1])
+                if len(data) > 4:
+                    breakdown = data.split(' ')
+                    print(breakdown)
+                    x = str(int(breakdown[0])*8)+'/8'
+                    y = breakdown[1]
+                    value = spy.sympify(breakdown[0]+'+'+breakdown[1])
         else:
             pass
 
-        return value
+        return str(value)
 
     def formatData(self, data, template):
         fmtData = [[]]
@@ -95,14 +99,12 @@ class Calculate:
     def process(self, d1, d2):
         # pass to the convert method to convert to mixed rational, and vice versa
         x = spy.symbols('x')
-        y = spy.symbols('y')
-        exp = x + y
 
         if d1 == "" or d2 == "":
             return ""
 
         x = spy.sympify("{} + {}".format(d1, d2), rational=True)
-        print(x)
+
         return x
 
 
@@ -225,6 +227,12 @@ class DataParser(Calculate):
                 else:
                     pageTotal = self.process(pageTotal, self.convert(data[row][1], reverse=True))
 
+            elif len(data[row][1]) == 1:
+                if ' ' not in data[row][1]:
+                    if pageTotal == "":
+                        pageTotal = data[row][1]
+                    else:
+                        pageTotal = self.process(str(pageTotal), self.convert(data[row][1]))
             elif len(data[row][1]) == 3:
                 if ' ' not in data[row][1]:
                     if pageTotal == "":
@@ -232,7 +240,7 @@ class DataParser(Calculate):
                     else:
                         pageTotal = self.process(pageTotal, data[row][1])
 
-        return pageTotal
+        return str(pageTotal)
 
     def __otherTotal(self, data):
         otherTotal = [0, 0]
@@ -265,13 +273,16 @@ class DataParser(Calculate):
         otherTotals = self.__otherTotal(data)
         totals = [otherTotals[0], pageTotals, deltaTotals[0], deltaTotals[1], deltaTotals[2], otherTotals[1]]
 
-        # Update days todals
+        # Update days totals
         index = 0
         for itm in calcdata[0]:
             itm.delete(0, tk.END)
             if index == 1:
                 # convert to mix fraction
-                itm.insert(0, totals[index])
+                if len(totals[index]) > 4:
+                    itm.insert(0, self.convert(self.convert(totals[index], reverse=True)))
+                else:
+                    itm.insert(0, self.convert(str(totals[index])))
                 index += 1
 
             elif index == 0 or index == 5:
@@ -286,6 +297,10 @@ class DataParser(Calculate):
                     itm.insert(0, '{}:{}'.format(int(totals[index] / 60), int(totals[index] % 60)))
 
                 index += 1
+
+        # Update total to date
+
+        # Update to be shot
 
     def dataMap(self, gui, datamap=None, new=False):
         """
