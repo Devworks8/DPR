@@ -177,7 +177,7 @@ class DataParser(Calculate):
 
         return template
 
-    def __timeDelta(self, fields, data):
+    def __timeDelta(self, fields):
         deltaMap = {}
 
         for row in range(2, 22):
@@ -197,7 +197,7 @@ class DataParser(Calculate):
                 delta = diff.total_seconds()
                 lstItems[2].delete(0, tk.END)
                 if diff < datetime.timedelta(0):
-                    lstItems[2].insert(0, '-{}:{}'.format(int(delta / 60), int(-delta % 60)))
+                    lstItems[2].insert(0, '-{}:{}'.format(int(-delta / 60), int(-delta % 60)))
                 else:
                     lstItems[2].insert(0, '{}:{}'.format(int(delta / 60), int(delta % 60)))
 
@@ -246,7 +246,7 @@ class DataParser(Calculate):
 
         return otherTotal
 
-    def __deltaTotal(self, fields, deltaMap):
+    def __deltaTotal(self, deltaMap):
         totals = []
         for value in deltaMap.values():
             if len(totals) == 0:
@@ -259,11 +259,33 @@ class DataParser(Calculate):
 
         return totals
 
-    def __calcTotals(self, fields, data):
-        deltaTotals = self.__deltaTotal(fields, self.__timeDelta(fields, data))
+    def __calcTotals(self, fields, data, calcdata):
+        deltaTotals = self.__deltaTotal(self.__timeDelta(fields))
         pageTotals = self.__pageTotal(data)
         otherTotals = self.__otherTotal(data)
-        print(deltaTotals, pageTotals, otherTotals)
+        totals = [otherTotals[0], pageTotals, deltaTotals[0], deltaTotals[1], deltaTotals[2], otherTotals[1]]
+
+        # Update days todals
+        index = 0
+        for itm in calcdata[0]:
+            itm.delete(0, tk.END)
+            if index == 1:
+                # convert to mix fraction
+                itm.insert(0, totals[index])
+                index += 1
+
+            elif index == 0 or index == 5:
+                itm.insert(0, totals[index])
+                index += 1
+
+            else:
+                # format time
+                if totals[index] < 0:
+                    itm.insert(0, '-{}:{}'.format(int(-totals[index] / 60), int(-totals[index] % 60)))
+                else:
+                    itm.insert(0, '{}:{}'.format(int(totals[index] / 60), int(totals[index] % 60)))
+
+                index += 1
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -329,7 +351,7 @@ class DataParser(Calculate):
         """
         if self.fmtData is not None and len(self.fmtData) > 1:
             if len(self.fmtData[0][0]) > 0:
-                self.__calcTotals(fields, self.fmtData)
+                self.__calcTotals(fields, self.fmtData, calcdata)
 
                 # print(fmtData[4]['previous']['scenes'])
             else:
