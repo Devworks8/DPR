@@ -177,15 +177,14 @@ class DataParser(Calculate):
 
         return template
 
-    def __timeDelta(self, fields):
+    def __timeDelta(self, fields, data):
         deltaMap = {}
 
-        for row in range(2, 21):
+        for row in range(2, 22):
 
             lstItems = []
-            for col in range(3, 5):
+            for col in range(2, 5):
                 if col == 4:
-                    lstItems.append(self.fmtData[row][col])
                     lstItems.append(fields[row - 2][col])
                 else:
                     lstItems.append(self.fmtData[row][col])
@@ -218,7 +217,7 @@ class DataParser(Calculate):
         """
         pageTotal = ""
 
-        for row in range(2, 21):
+        for row in range(2, 22):
             if len(data[row][1]) == 5:
                 if pageTotal == "":
                     pageTotal = self.convert(data[row][1], reverse=True)
@@ -238,16 +237,16 @@ class DataParser(Calculate):
     def __otherTotal(self, data):
         otherTotal = [0, 0]
 
-        for row in range(2, 21):
+        for row in range(2, 22):
             if len(data[row][0]) > 0:
-                otherTotal[0] = otherTotal[0] + int(data[row][0])
+                otherTotal[0] = otherTotal[0] + 1
 
             if len(data[row][5]) > 0:
                 otherTotal[1] = otherTotal[1] + int(data[row][5])
 
         return otherTotal
 
-    def __deltaTotal(self, deltaMap):
+    def __deltaTotal(self, fields, deltaMap):
         totals = []
         for value in deltaMap.values():
             if len(totals) == 0:
@@ -261,9 +260,10 @@ class DataParser(Calculate):
         return totals
 
     def __calcTotals(self, fields, data):
-        deltaTotals = self.__deltaTotal(self.__timeDelta(fields))
+        deltaTotals = self.__deltaTotal(fields, self.__timeDelta(fields, data))
         pageTotals = self.__pageTotal(data)
         otherTotals = self.__otherTotal(data)
+        print(deltaTotals, pageTotals, otherTotals)
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -333,7 +333,8 @@ class DataParser(Calculate):
 
                 # print(fmtData[4]['previous']['scenes'])
             else:
-                print("No title")
+                # This is executed when the title entry is blank.
+                pass
 
     def load(self, root, gui, settings=None, project=False):
         if project is False:
