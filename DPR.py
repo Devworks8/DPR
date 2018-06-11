@@ -47,7 +47,7 @@ class Calculate:
                         rational.q = rational.q * f
                         value = rational
                         if rational.p > 8:
-                            value.format("%d %d", rational.p / 8, rational.p % 8)
+                            str(value).format("%d %d", rational.p / 8, rational.p % 8)
                 else:
                     if int(rational.p) > 8:
 
@@ -57,9 +57,6 @@ class Calculate:
             else:
                 if len(data) > 4:
                     breakdown = data.split(' ')
-                    print(breakdown)
-                    x = str(int(breakdown[0])*8)+'/8'
-                    y = breakdown[1]
                     value = spy.sympify(breakdown[0]+'+'+breakdown[1])
         else:
             pass
