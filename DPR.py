@@ -76,8 +76,7 @@ class Calculate:
         for index in range(9, 129):
             if len(fmtData[len(fmtData) - 1]) % 7 == 0:
                 fmtData.append([data[index]])
-
-            if len(fmtData[len(fmtData) - 1]) % 6 == 0:
+            elif len(fmtData[len(fmtData) - 1]) % 6 == 0:
                 fmtData.append([data[index]])
             else:
                 fmtData[len(fmtData) - 1].append(data[index])
@@ -152,8 +151,6 @@ class DataParser(Calculate):
         self.data = []
         self.saveTemplate = self.__setupSaveTemplate()
         self.fmtData = None
-        self.dataTotal = {}
-        self.pageTotal = {}
 
     def __setupSaveTemplate(self):
         """
@@ -180,7 +177,7 @@ class DataParser(Calculate):
 
         return template
 
-    def __timeDelta(self, fields, data):
+    def __timeDelta(self, fields):
         deltaMap = {}
 
         for row in range(2, 21):
@@ -212,7 +209,7 @@ class DataParser(Calculate):
 
         return deltaMap
 
-    def __pageTotal(self, fields, data):
+    def __pageTotal(self, data):
         """
         Calculate total pages in eighths.
         :param fields:
@@ -238,11 +235,19 @@ class DataParser(Calculate):
 
         return pageTotal
 
-    def __otherTotal(self, fields, data):
-        #TODO
-        pass
+    def __otherTotal(self, data):
+        otherTotal = [0, 0]
 
-    def __deltaTotal(self, fields, deltaMap):
+        for row in range(2, 21):
+            if len(data[row][0]) > 0:
+                otherTotal[0] = otherTotal[0] + int(data[row][0])
+
+            if len(data[row][5]) > 0:
+                otherTotal[1] = otherTotal[1] + int(data[row][5])
+
+        return otherTotal
+
+    def __deltaTotal(self, deltaMap):
         totals = []
         for value in deltaMap.values():
             if len(totals) == 0:
@@ -256,9 +261,9 @@ class DataParser(Calculate):
         return totals
 
     def __calcTotals(self, fields, data):
-        deltaTotals = self.__deltaTotal(fields, self.__timeDelta(fields, data))
-        pageTotals = self.__pageTotal(fields, data)
-
+        deltaTotals = self.__deltaTotal(self.__timeDelta(fields))
+        pageTotals = self.__pageTotal(data)
+        otherTotals = self.__otherTotal(data)
 
     def dataMap(self, gui, datamap=None, new=False):
         """
