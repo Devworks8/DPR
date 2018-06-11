@@ -93,14 +93,18 @@ class Calculate:
 
         return fmtData
 
-    def process(self, data):
+    def process(self, d1, d2):
         # pass to the convert method to convert to mixed rational, and vice versa
         x = spy.symbols('x')
         y = spy.symbols('y')
         exp = x + y
-        x = spy.sympify("41/8 + 1/8", rational=True)
-        y = spy.sympify("1/8 + 1/8", rational=True)
-        exp = x + y
+
+        if d1 == "" or d2 == "":
+            return ""
+
+        x = spy.sympify("{} + {}".format(d1, d2), rational=True)
+        print(x)
+        return x
 
 
 # Settings handler
@@ -148,6 +152,8 @@ class DataParser(Calculate):
         self.data = []
         self.saveTemplate = self.__setupSaveTemplate()
         self.fmtData = None
+        self.dataTotal = {}
+        self.pageTotal = {}
 
     def __setupSaveTemplate(self):
         """
@@ -175,7 +181,10 @@ class DataParser(Calculate):
         return template
 
     def __timeDelta(self, fields, data):
+        deltaMap = {}
+
         for row in range(2, 21):
+
             lstItems = []
             for col in range(3, 5):
                 if col == 4:
@@ -183,11 +192,12 @@ class DataParser(Calculate):
                     lstItems.append(fields[row - 2][col])
                 else:
                     lstItems.append(self.fmtData[row][col])
+
             # Do calculation Ert - Art -> Delta
             if len(lstItems[0]) > 2 and len(lstItems[1]) > 2:
                 ert = datetime.datetime.strptime(lstItems[0], '%M:%S')
                 art = datetime.datetime.strptime(lstItems[1], '%M:%S')
-                diff = ert - art
+                diff = art - ert
                 delta = diff.total_seconds()
                 lstItems[2].delete(0, tk.END)
                 if diff < datetime.timedelta(0):
@@ -195,24 +205,60 @@ class DataParser(Calculate):
                 else:
                     lstItems[2].insert(0, '{}:{}'.format(int(delta / 60), int(delta % 60)))
 
-    def update(self, gui, fields, calcdata,  data):
-        self.fmtData = self.formatData(data.dataMap(gui), self.saveTemplate)
-        """
-                fmtData index key: 0 = title
-                                   1 = 
-                                   2 = daily entries
-                                   3 = 
-                                   4 = OrderedDict
-                                   5 = comments
-        """
+                # Map the delta information using a dict of lists.
+                deltaMap[row] = [ert.timetuple().tm_min * 60 + ert.timetuple().tm_sec]
+                deltaMap[row].append(art.timetuple().tm_min * 60 + art.timetuple().tm_sec)
+                deltaMap[row].append(int(diff.total_seconds()))
 
-        if self.fmtData is not None and len(self.fmtData) > 1:
-            if len(self.fmtData[0][0]) > 0:
-                self.__timeDelta(fields, self.fmtData)
+        return deltaMap
 
-                #print(fmtData[4]['previous']['scenes'])
+    def __pageTotal(self, fields, data):
+        """
+        Calculate total pages in eighths.
+        :param fields:
+        :param data:
+        :return: page totals
+        """
+        pageTotal = ""
+
+        for row in range(2, 21):
+            if len(data[row][1]) == 5:
+                if pageTotal == "":
+                    pageTotal = self.convert(data[row][1], reverse=True)
+                # do reverse convert
+                else:
+                    pageTotal = self.process(pageTotal, self.convert(data[row][1], reverse=True))
+
+            elif len(data[row][1]) == 3:
+                if ' ' not in data[row][1]:
+                    if pageTotal == "":
+                        pageTotal = data[row][1]
+                    else:
+                        pageTotal = self.process(pageTotal, data[row][1])
+
+        return pageTotal
+
+    def __otherTotal(self, fields, data):
+        #TODO
+        pass
+
+    def __deltaTotal(self, fields, deltaMap):
+        totals = []
+        for value in deltaMap.values():
+            if len(totals) == 0:
+                totals = value
             else:
-                print("No title")
+                index = 0
+                for item in value:
+                    totals[index] = totals[index] + item
+                    index += 1
+
+        return totals
+
+    def __calcTotals(self, fields, data):
+        deltaTotals = self.__deltaTotal(fields, self.__timeDelta(fields, data))
+        pageTotals = self.__pageTotal(fields, data)
+
 
     def dataMap(self, gui, datamap=None, new=False):
         """
@@ -263,7 +309,26 @@ class DataParser(Calculate):
                                 index += 1
                             else:
                                 w.delete("1.0", tk.END)
+
         return data
+
+    def update(self, gui, fields, calcdata,  data):
+        self.fmtData = self.formatData(data.dataMap(gui), self.saveTemplate)
+        """
+                fmtData index key: 0 = title
+                                   1 = 
+                                   2 = daily entries
+                                   3 = 
+                                   4 = OrderedDict
+                                   5 = comments
+        """
+        if self.fmtData is not None and len(self.fmtData) > 1:
+            if len(self.fmtData[0][0]) > 0:
+                self.__calcTotals(fields, self.fmtData)
+
+                # print(fmtData[4]['previous']['scenes'])
+            else:
+                print("No title")
 
     def load(self, root, gui, settings=None, project=False):
         if project is False:
@@ -327,11 +392,11 @@ class Gui:
     def __init__(self, master):
         self.master = master
         self.config = ConfigParser()
-        self.data = DataParser()
         self.gui = None
         self.fields = []
         self.calcData = []
         self.create(master)
+        self.data = DataParser()
         self.updater()
 
     def updater(self):
@@ -491,6 +556,7 @@ class Gui:
         for i in range(height):  # Rows
             for j in range(width):  # Columns
                 b = tk.Entry(frame3, width=6)
+                b.config(justify=tk.CENTER)
                 b.grid(row=i + 1, column=j)
                 # Create a nested list of lists containing 6 objects each representing a row of data.
                 if len(self.fields) == 0:
@@ -554,45 +620,70 @@ class Gui:
         lblSetups = tk.Label(frame5, text="Setups")
         lblToday = tk.Label(frame5, text="Shot Today")
         entTodayScenes = tk.Entry(frame5, width=6)
+        entTodayScenes.config(justify=tk.CENTER)
         entTodayPages = tk.Entry(frame5, width=6)
+        entTodayPages.config(justify=tk.CENTER)
         entTodayErt = tk.Entry(frame5, width=6)
+        entTodayErt.config(justify=tk.CENTER)
         entTodayArt = tk.Entry(frame5, width=6)
+        entTodayArt.config(justify=tk.CENTER)
         entTodayDelta = tk.Entry(frame5, width=6)
+        entTodayDelta.config(justify=tk.CENTER)
         entTodaySetups = tk.Entry(frame5, width=6)
+        entTodaySetups.config(justify=tk.CENTER)
         self.calcData.append([entTodayScenes, entTodayPages, entTodayErt, entTodayArt, entTodayDelta, entTodaySetups])
 
         lblPrev = tk.Label(frame5, text="Shot Previous")
         entPrevScenes = tk.Entry(frame5, width=6)
+        entPrevScenes.config(justify=tk.CENTER)
         entPrevPages = tk.Entry(frame5, width=6)
+        entPrevPages.config(justify=tk.CENTER)
         entPrevErt = tk.Entry(frame5, width=6)
+        entPrevErt.config(justify=tk.CENTER)
         entPrevArt = tk.Entry(frame5, width=6)
+        entPrevArt.config(justify=tk.CENTER)
         entPrevDelta = tk.Entry(frame5, width=6)
+        entPrevDelta.config(justify=tk.CENTER)
         entPrevSetups = tk.Entry(frame5, width=6)
+        entPrevSetups.config(justify=tk.CENTER)
         self.calcData.append([entPrevScenes, entPrevPages, entPrevErt, entPrevArt, entPrevDelta, entPrevSetups])
 
         lblTotal = tk.Label(frame5, text="Total to Date")
         entTotalScenes = tk.Entry(frame5, width=6)
+        entTotalScenes.config(justify=tk.CENTER)
         entTotalPages = tk.Entry(frame5, width=6)
+        entTotalPages.config(justify=tk.CENTER)
         entTotalErt = tk.Entry(frame5, width=6)
+        entTotalErt.config(justify=tk.CENTER)
         entTotalArt = tk.Entry(frame5, width=6)
+        entTotalArt.config(justify=tk.CENTER)
         entTotalDelta = tk.Entry(frame5, width=6)
+        entTotalDelta.config(justify=tk.CENTER)
         entTotalSetups = tk.Entry(frame5, width=6)
+        entTotalSetups.config(justify=tk.CENTER)
         self.calcData.append([entTotalScenes, entTotalPages, entTotalErt, entTotalArt, entTotalDelta, entTotalSetups])
 
         lblScriptTtl = tk.Label(frame5, text="Script Total")
         entScriptTtlScenes = tk.Entry(frame5, width=6)
+        entScriptTtlScenes.config(justify=tk.CENTER)
         entScriptTtlPages = tk.Entry(frame5, width=6)
+        entScriptTtlPages.config(justify=tk.CENTER)
         entScriptTtlErt = tk.Entry(frame5, width=6)
+        entScriptTtlErt.config(justify=tk.CENTER)
         self.calcData.append([entScriptTtlScenes, entScriptTtlPages, entScriptTtlErt])
 
         lblToBe = tk.Label(frame5, text="To be Shot")
         entToBeScenes = tk.Entry(frame5, width=6)
+        entToBeScenes.config(justify=tk.CENTER)
         entToBePages = tk.Entry(frame5, width=6)
+        entToBePages.config(justify=tk.CENTER)
         entToBeErt = tk.Entry(frame5, width=6)
+        entToBeErt.config(justify=tk.CENTER)
         self.calcData.append([entToBeScenes, entToBePages, entToBeErt])
 
         lblTtlRun = tk.Label(frame5, text="Projected Total Running Time: ")
         entTtlRun = tk.Entry(frame5, width=6)
+        entTtlRun.config(justify=tk.CENTER)
         """
         Place widgets on grid
         """
