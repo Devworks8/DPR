@@ -114,6 +114,7 @@ font: [Courier, 10]
 history: []
 path: ./Projects/
 title: "" 
+previous: [0, 0, 0, 0, 0, 0]
 """
         self.settings = self.__loadSettings()
         self.psettings = self.settings
@@ -150,6 +151,7 @@ class DataParser(Calculate):
         self.data = []
         self.saveTemplate = self.__setupSaveTemplate()
         self.fmtData = None
+        self.fname = None
 
     def __setupSaveTemplate(self):
         """
@@ -192,7 +194,7 @@ class DataParser(Calculate):
             if len(lstItems[0]) > 2 and len(lstItems[1]) > 2:
                 ert = datetime.datetime.strptime(lstItems[0], '%M:%S')
                 art = datetime.datetime.strptime(lstItems[1], '%M:%S')
-                diff = art - ert
+                diff = ert - art
                 delta = diff.total_seconds()
                 lstItems[2].delete(0, tk.END)
                 if diff < datetime.timedelta(0):
@@ -268,32 +270,39 @@ class DataParser(Calculate):
         deltaTotals = self.__deltaTotal(self.__timeDelta(fields))
         pageTotals = self.__pageTotal(data)
         otherTotals = self.__otherTotal(data)
-        totals = [otherTotals[0], pageTotals, deltaTotals[0], deltaTotals[1], deltaTotals[2], otherTotals[1]]
+        if len(deltaTotals) == 0 or len(pageTotals) == 0 or len(otherTotals) == 0:
+            pass
+        else:
+            totals = [otherTotals[0], pageTotals, deltaTotals[0], deltaTotals[1], deltaTotals[2], otherTotals[1]]
 
-        # Update days totals
-        index = 0
-        for itm in calcdata[0]:
-            itm.delete(0, tk.END)
-            if index == 1:
-                # convert to mix fraction
-                if len(totals[index]) > 4:
-                    itm.insert(0, self.convert(self.convert(totals[index], reverse=True)))
+            # Update days totals
+            index = 0
+            for itm in calcdata[0]:
+                itm.delete(0, tk.END)
+                if index == 1:
+                    # convert to mix fraction
+                    if len(totals[index]) > 4:
+                        itm.insert(0, self.convert(self.convert(totals[index], reverse=True)))
+                    else:
+                        itm.insert(0, self.convert(str(totals[index])))
+                    index += 1
+
+                elif index == 0 or index == 5:
+                    itm.insert(0, totals[index])
+                    index += 1
+
                 else:
-                    itm.insert(0, self.convert(str(totals[index])))
-                index += 1
+                    # format time
+                    if totals[index] < 0:
+                        itm.insert(0, '-{}:{}'.format(int(-totals[index] / 60), int(-totals[index] % 60)))
+                    else:
+                        itm.insert(0, '{}:{}'.format(int(totals[index] / 60), int(totals[index] % 60)))
 
-            elif index == 0 or index == 5:
-                itm.insert(0, totals[index])
-                index += 1
+                    index += 1
 
-            else:
-                # format time
-                if totals[index] < 0:
-                    itm.insert(0, '-{}:{}'.format(int(-totals[index] / 60), int(-totals[index] % 60)))
-                else:
-                    itm.insert(0, '{}:{}'.format(int(totals[index] / 60), int(totals[index] % 60)))
-
-                index += 1
+        """
+        Projected total -> script total ert+ total delta
+        """
 
         # Update total to date
 
@@ -362,12 +371,12 @@ class DataParser(Calculate):
                                    5 = comments
         """
         if self.fmtData is not None and len(self.fmtData) > 1:
-            if len(self.fmtData[0][0]) > 0:
+            if len(self.fmtData[0][0]) > 0: #TODO: REplace with checkbox value
                 self.__calcTotals(fields, self.fmtData, calcdata)
 
                 # print(fmtData[4]['previous']['scenes'])
             else:
-                # This is executed when the title entry is blank.
+                # Disable automatic calculations.
                 pass
 
     def load(self, root, gui, settings=None, project=False):
@@ -386,6 +395,7 @@ class DataParser(Calculate):
             filename = filedialog.askopenfilename(initialdir=settings.settings['path'],
                                                   title="Open Project")
             if filename is not '':
+                self.fname = filename
                 stream = open(filename, 'r')
                 settings.psettings = yaml.load(stream)
                 self.dataMap(gui, new=True)
@@ -398,22 +408,33 @@ class DataParser(Calculate):
             #TODO: Display Message window
             pass
 
-    def save(self, root, spath=None, datamap=None, settings=None):
+    def save(self, gui, root, spath=None, datamap=None, template=None, settings=None, saveas=True):
         path = spath+'/Reports'
         if not os.path.exists(path):
             os.makedirs(path)
         p, d, files = next(os.walk(path))
         day = str(len(files)+1)
-        filename = filedialog.asksaveasfilename(initialdir=path, defaultextension='p', initialfile='Day'+day,
-                                                title="Save As")
-        settings['history'].append(os.path.split(filename)[1])
+
+        if saveas or '.p' not in root.title():
+            filename = filedialog.asksaveasfilename(initialdir=path, defaultextension='p', initialfile='Day'+day,
+                                                    title="Save As")
+
+            if filename is not '':
+                settings['history'].append(os.path.split(filename)[1])
+                root.title(datamap[0] + '.dpro' + ' - ' + settings['history'][-1])
+                self.fname = filename
+
+        datamap = self.dataMap(gui)
+
+        for index in range(6):
+            settings['previous'][index] = datamap[142+index]
+
         stream = open(spath + datamap[0] + '.dpro', 'w')
         yaml.dump(settings, stream)
         stream.close()
-        sfile = open(filename, 'wb')
+        sfile = open(self.fname, 'wb')
         pickle.dump(datamap, sfile)
         sfile.close()
-        root.title(datamap[0]+'.dpro'+' - '+settings['history'][-1])
 
     def newProject(self, root, gui, settings, data):
         title = simpledialog.askstring("New Project", "Project name", parent=gui)
@@ -480,10 +501,18 @@ class Gui:
         fileMenu.add_separator()
         fileMenu.add_command(label="Print", command=None)
         fileMenu.add_separator()
-        fileMenu.add_command(label="Save", command=None)
-        fileMenu.add_command(label="Save As", command=lambda: self.data.save(self.master,
+        fileMenu.add_command(label="Save", command=lambda: self.data.save(self.gui,
+                                                                          self.master,
+                                                                          self.config.psettings['path'],
+                                                                          self.data.dataMap(frame.interior),
+                                                                          self.fields,
+                                                                          self.config.psettings, saveas=False))
+
+        fileMenu.add_command(label="Save As", command=lambda: self.data.save(self.gui,
+                                                                             self.master,
                                                                              self.config.psettings['path'],
                                                                              self.data.dataMap(frame.interior),
+                                                                             self.fields,
                                                                              self.config.psettings))
         fileMenu.add_separator()
         fileMenu.add_command(label="Quit", command=root.quit)
